@@ -24,6 +24,8 @@ library(performance)
 library(equatiomatic)
 library(coefplot)
 library(rnaturalearth)
+library(see)
+library(patchwork)
 
 # Next week we will begin exploring Vector Autoregressive Spatio-temporal (VAST)
 #   models in R.
@@ -47,7 +49,7 @@ library(rnaturalearth)
 
 # install.packages("devtools") # UNCOMMENT ME AS NECESSARY
 
-library("devtools")
+library(devtools)
 
 # Next, please install the VAST package from this GitHub repository using a 
 # function in the "devtools" package. 
@@ -530,8 +532,51 @@ g
 # 1) Find a reasonable way to plot multiple years of log pollock CPUE
 # 2) Please explore data from the Gulf of Alaska BTS for pollock and other species
 #   We will share our figures in class, as well as what inference we derive from them.
+str(pol.dat)
 
+## Question - I don't know how to index the Year variable in sequential order
 
+sort(unique(pol.dat$Year))
+
+plot.list <- list()
+for (i in 1:length(unique(pol.dat$fYear))) {
+  g <- eval(substitute(
+    ggplot(data = world) +
+      theme_linedraw() +  
+      geom_sf() +
+      coord_sf(xlim = c(-180, -155), ylim = c(52, 63), expand = F)  +
+      geom_point(data=pol.dat[pol.dat$fYear==(min(pol.dat$Year)+i-1) & pol.dat$Survey=="EBS_SHELF",],
+                 aes(x=Starting.Longitude..dd., y=Starting.Latitude..dd., 
+                     color=log(Weight.CPUE..kg.km2.)), alpha=0.7) +
+      scale_color_viridis_c() +
+      ggtitle("EBS Walleye Pollock", subtitle=(min(pol.dat$Year)+i-1)) +
+      xlab("Starting Latitude") +
+      ylab("Starting Longitude")
+    , list(i = i)))
+  
+  print(i)
+  print(g)
+  plot.list[[i]] <- g
+}
+
+pdf("all.pdf")
+invisible(lapply(plot.list, print))
+dev.off()
+order(unique(pol.dat$Year))
+
+y = 1
+g <- ggplot(data = world) +
+  theme_linedraw() +  
+  geom_sf() +
+  coord_sf(xlim = c(-180, -155), ylim = c(52, 63), expand = F)  +
+  geom_point(data=pol.dat[pol.dat$Year==pol.dat$Year[y] & pol.dat$Survey=="EBS_SHELF",],
+             aes(x=Starting.Longitude..dd., y=Starting.Latitude..dd., 
+                 color=log(Weight.CPUE..kg.km2.)), alpha=0.7) +
+  scale_color_viridis_c() +
+  ggtitle("EBS Walleye Pollock", subtitle=pol.dat$Year[y]) +
+  xlab("Starting Latitude") +
+  ylab("Starting Longitude")
+g
 # ==============================================================================
 
 
