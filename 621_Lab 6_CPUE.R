@@ -441,9 +441,9 @@ ggplot(summary.pollock, aes(x=Year, y=n, fill=Survey)) +
   ylab("Number of Survey Hauls")
 
 # Next, we will load data associated with the survey strata
-strata.dat <- read.csv("Stratum Descriptions.csv")
+strata.data <- read.csv("Stratum Descriptions.csv")
 
-str(strata.dat)
+str(strata.data)
 
 # From these data we know that area (Area..km2.) for each strata within each
 #   Survey
@@ -518,7 +518,7 @@ g <- ggplot(data = world) +
   theme_linedraw() +  
   geom_sf() +
   coord_sf(xlim = c(-180, -155), ylim = c(52, 63), expand = TRUE)  +
-  geom_point(data=pol.dat[pol.dat$Year==2019 & pol.dat$Survey=="EBS_SHELF",],
+  geom_point(data=pol.dat[pol.dat$Year==years[i] & pol.dat$Survey=="EBS_SHELF",],
              aes(x=Starting.Longitude..dd., y=Starting.Latitude..dd., 
                  color=log(Weight.CPUE..kg.km2.)), alpha=0.5) +
   scale_color_viridis_c() +
@@ -536,20 +536,20 @@ str(pol.dat)
 
 ## Question - I don't know how to index the Year variable in sequential order
 
-sort(unique(pol.dat$Year))
+years <- sort(unique(pol.dat$Year))
 
 plot.list <- list()
-for (i in 1:length(unique(pol.dat$fYear))) {
+for (i in 1:length(unique(pol.dat$Year))) {
   g <- eval(substitute(
     ggplot(data = world) +
       theme_linedraw() +  
       geom_sf() +
       coord_sf(xlim = c(-180, -155), ylim = c(52, 63), expand = F)  +
-      geom_point(data=pol.dat[pol.dat$fYear==(min(pol.dat$Year)+i-1) & pol.dat$Survey=="EBS_SHELF",],
+      geom_point(data=pol.dat[pol.dat$Year==years[i] & pol.dat$Survey=="EBS_SHELF",],
                  aes(x=Starting.Longitude..dd., y=Starting.Latitude..dd., 
                      color=log(Weight.CPUE..kg.km2.)), alpha=0.7) +
       scale_color_viridis_c() +
-      ggtitle("EBS Walleye Pollock", subtitle=(min(pol.dat$Year)+i-1)) +
+      ggtitle("EBS Walleye Pollock", subtitle=years[i]) +
       xlab("Starting Latitude") +
       ylab("Starting Longitude")
     , list(i = i)))
@@ -562,21 +562,8 @@ for (i in 1:length(unique(pol.dat$fYear))) {
 pdf("all.pdf")
 invisible(lapply(plot.list, print))
 dev.off()
-order(unique(pol.dat$Year))
 
-y = 1
-g <- ggplot(data = world) +
-  theme_linedraw() +  
-  geom_sf() +
-  coord_sf(xlim = c(-180, -155), ylim = c(52, 63), expand = F)  +
-  geom_point(data=pol.dat[pol.dat$Year==pol.dat$Year[y] & pol.dat$Survey=="EBS_SHELF",],
-             aes(x=Starting.Longitude..dd., y=Starting.Latitude..dd., 
-                 color=log(Weight.CPUE..kg.km2.)), alpha=0.7) +
-  scale_color_viridis_c() +
-  ggtitle("EBS Walleye Pollock", subtitle=pol.dat$Year[y]) +
-  xlab("Starting Latitude") +
-  ylab("Starting Longitude")
-g
+
 # ==============================================================================
 
 
@@ -610,9 +597,14 @@ head(cstrat)
 
 # Challenge B: Visualizing Stratum-specific CPUE ===============================
 
-
 # Please visualize the stratum-specific cpue variance in CPUE for this species across time
 
+ggplot(data = cstrat, aes(x=Year, y=CPUE, color = factor(Stratum))) +
+  geom_point() +
+  geom_line() +
+  ggtitle("Stratum-specific CPUE", subtitle="GOA Walleye Pollock") +
+  xlab("Year") +
+  ylab("CPUE")
 
 # ==============================================================================
 
@@ -698,6 +690,101 @@ biomass
 # Please calculate design-based biomass estimates from the bottom trawl survey data
 #   for northern rockfish and yellowfin sole in the Gulf of Alaska
 
+goa.data <- bts.dat %>% filter(Common.Name %in% c("northern rockfish","yellowfin sole"), Survey=="GOA")
+
+# 1) Calculate sum and variance in cpue by year and stratum
+cstrat1 <- data.frame(goa.data %>% group_by(Year, Stratum, Common.Name) %>% 
+                       summarize(CPUE=sum(Weight.CPUE..kg.km2.), CPUEvar=var(Weight.CPUE..kg.km2.))) #dplyr
+
+# Lets inspect this new object
+str(cstrat1)
+head(cstrat1)
+
+# 2) Calculate number of hauls in each year and stratum
+#     In order to determine y_bar_h the average biomass per stratum,
+#       we will need to know the number of hauls that occurred within each stratum in 
+#         each year.
+#   We can do this by summarizing our data by Year and Stratum and counting the number
+#      of unique HAUL.JOIN.IDs
+#   These represent unique identifiers for each sampling event
+
+hstrat1 <- data.frame(goa.data %>% group_by(Year, Stratum, Common.Name) %>% summarize(n_sta=length(unique(Haul.Join.ID)))) #dplyr
+
+str(hstrat1)
+head(hstrat1)
+
+
+# 3) Next we will join our prior table of average CPUE and variance in CPUE
+#      by strata and year with our number of survey observations per for each stratum and year
+biomvar1 <- left_join(cstrat1, hstrat1, by=c("Year", "Stratum", "Common.Name")) #dplyr
+colnames(biomvar1) <- c("YEAR","STRATUM","COMMON.NAME","CPUE","VAR","n_stations")
+
+# Inspect the resulting object
+str(biomvar1)
+head(biomvar1)
+
+
+# 4) Next need our data for the individual strata to calculate the area of each
+#      strata so we can scale up our biomass estimates for each stratm
+
+# We already loaded it, so we can re-familiarize ourselves here...
+head(strata.data)
+
+# 
+
+# 5) We will then filter the strata data for the correct survey area
+#      and just extract the variables (columns) we need
+
+strata.area <- strata.data %>% filter(Survey=="GOA") %>% select("Stratum", "Area..km2.", 
+                                                                "Stratum.INPFC.Area","Stratum.Regulatory.Area.Name")
+names(strata.area) <- c("STRATUM","AREA","INPFC_AREA","REGULATORY.AREA")
+
+# What is the average size in km^2 for our strata, and the distribution
+summary(strata.area$AREA)
+
+hist(strata.area$AREA)
+
+# 6) We will need to join our strata area data to the CPUE data by year and stratum
+#      we previously calculated.
+
+# A left_join() will allow us to attach the strata area info to our CPUE object
+biomvar1 <- left_join(biomvar1, strata.area, by=c("STRATUM")) #dplyr
+
+head(biomvar1)
+
+# 7) Next we will calculate our key summary information by year and strata
+
+# We can calculate the biomass (kg) per stratum by:
+#   a) calculating the average cpue/station within each stratum, and multiplying that 
+#        by the area of each stratum
+
+biomvar1$BIOMASS<-(biomvar1$CPUE/biomvar1$n_stations)*biomvar1$AREA
+
+# The variance in biomass per stratum is the (area)^2 * (variance/number of stations)
+biomvar1$VAR2<-biomvar1$AREA^2*(biomvar1$VAR/biomvar1$n_stations)
+
+# 8) Finally, we can calculate our total biomass and variance in biomass
+#      by summing across strata
+
+
+biomass.northern.rockfish <- data.frame(biomvar1 %>% 
+                                          filter(COMMON.NAME == "northern rockfish") %>% 
+                                          group_by(YEAR) %>%
+                                          summarize(Biomass=sum(BIOMASS,na.rm=TRUE)/1e3,
+                                                    Variance=sum(VAR2,na.rm=TRUE)/(1e3^2),
+                                                    SD=sqrt(sum(VAR2,na.rm=TRUE))/1e3,
+                                                    CV=SD/(sum(BIOMASS,na.rm=TRUE)/1e3)))
+biomass.northern.rockfish
+
+biomass.yellowfin.sole <- data.frame(biomvar1 %>% 
+                                          filter(COMMON.NAME == "yellowfin sole") %>% 
+                                          group_by(YEAR) %>%
+                                          summarize(Biomass=sum(BIOMASS,na.rm=TRUE)/1e3,
+                                                    Variance=sum(VAR2,na.rm=TRUE)/(1e3^2),
+                                                    SD=sqrt(sum(VAR2,na.rm=TRUE))/1e3,
+                                                    CV=SD/(sum(BIOMASS,na.rm=TRUE)/1e3)))
+biomass.yellowfin.sole
+
 # ==============================================================================
 
 # Model-based CPUE Indices ====================================================
@@ -705,7 +792,7 @@ biomass
 #   for pollock in the GOA, let's compare these
 
 # With our model-based GLM approach
-
+load.dat <- bts.dat %>% filter(Common.Name=="walleye pollock", Survey=="GOA")
 str(load.dat)
 
 # Recall that we the absolutely necessary piece of our GLM for CPUE standardization
@@ -726,8 +813,53 @@ visreg(glm.pol.goa)
 
 # Please complete this process also for northern rockfish and yellowfin sole
 
+nrrf.dat <- bts.dat %>% filter(Common.Name=="northern rockfish", Survey=="GOA")
+ylfs.dat <- bts.dat %>% filter(Common.Name=="yellowfin sole", Survey=="GOA")
+
+nrrf.dat$fYear <- factor(nrrf.dat$Year)
+ylfs.dat$fYear <- factor(ylfs.dat$Year)
+
+glm.nrrf.goa <- glm(log(Weight.CPUE..kg.km2.+1) ~ fYear, data=nrrf.dat)
+glm.ylfs.goa <- glm(log(Weight.CPUE..kg.km2.+1) ~ fYear, data=ylfs.dat)
 
 
+years <- sort(unique(load.dat$Year))
+n.years <- length(years)
+
+# Create output vectors for first set of GLM model predictions:
+CPUE.glm.pol <- rep(NA,length(years))
+CPUE.glm.nrrf <- rep(NA,length(years))
+CPUE.glm.ylfs <- rep(NA,length(years))
+
+# Calculate sigma from each model:
+sigmas <- rep(NA,3)
+sigmas[1] <- sd(glm.pol.goa$residuals)
+sigmas[2] <- sd(glm.nrrf.goa$residuals)
+sigmas[3] <- sd(glm.ylfs.goa$residuals)
+
+# Loop through and create CPUE predictions:
+y <- 1
+for(y in 1:n.years) {
+  
+  # Predict lnCPUE from first set of GLM models:
+  glm.pol.goa.pred <-  predict(glm.pol.goa, newdata=list(fYear=factor(years[y])), se=TRUE)
+  glm.nrrf.goa.pred <-  predict(glm.pol.goa, newdata=list(fYear=factor(years[y])), se=TRUE)
+  glm.ylfs.goa.pred <-  predict(glm.pol.goa, newdata=list(fYear=factor(years[y])), se=TRUE)
+  
+  # Populate our output vectors:
+  CPUE.glm.pol[y] <- exp(glm.pol.goa.pred$fit + (sigmas[1]^2)/2)
+  CPUE.glm.nrrf[y] <- exp(glm.nrrf.goa.pred$fit + (sigmas[2]^2)/2)
+  CPUE.glm.ylfs[y] <- exp(glm.ylfs.goa.pred$fit + (sigmas[3]^2)/2)
+  
+}
+
+basic.model.df <- data.frame(
+  "model.walleye.pollock" = CPUE.glm.pol, 
+  "model.northern.rockfish" = CPUE.glm.nrrf, 
+  "model.yellowfin.sole" = CPUE.glm.ylfs
+  )
+
+basic.model.df
 
 
 # Challenge E: Model-based Index with Covariates ===============================
@@ -737,13 +869,110 @@ visreg(glm.pol.goa)
 # Please implement alternative models and compare their performance and their
 #   resulting predictions for the CPUE index timeseries.
 
+load.dat$fStratum <- factor(load.dat$Stratum)
+nrrf.dat$fStratum <- factor(nrrf.dat$Stratum)
+ylfs.dat$fStratum <- factor(ylfs.dat$Stratum)
+
+glm.pol.goa1 <- glm(log(Weight.CPUE..kg.km2.+1) ~ fYear + fStratum, data=load.dat)
+glm.nrrf.goa1 <- glm(log(Weight.CPUE..kg.km2.+1) ~ fYear + fStratum, data=nrrf.dat)
+glm.ylfs.goa1 <- glm(log(Weight.CPUE..kg.km2.+1) ~ fYear + fStratum, data=ylfs.dat)
+
+
+years <- sort(unique(load.dat$Year))
+n.years <- length(years)
+stratum <- sort(unique(load.dat$Stratum))
+n.stratum <- length(unique(load.dat$Stratum))
+
+# Create output vectors for second set of GLM model predictions:
+CPUE.glm.pol1 <- rep(NA,length(years))
+CPUE.glm.nrrf1 <- rep(NA,length(years))
+CPUE.glm.ylfs1 <- rep(NA,length(years))
+
+# Calculate sigma from each model:
+sigmas1 <- rep(NA,3)
+sigmas1[1] <- sd(glm.pol.goa1$residuals)
+sigmas1[2] <- sd(glm.nrrf.goa1$residuals)
+sigmas1[3] <- sd(glm.ylfs.goa1$residuals)
+
+y <- 1
+x <- 1
+for (x in 1:n.stratum) {
+  for(y in 1:n.years) {
+    
+    # Predict lnCPUE from second set of GLM models:
+    glm.pol.goa1.pred <-  predict(glm.pol.goa1, newdata=list(fYear=factor(years[y]),
+                                                             fStratum=factor(stratum[x])), se=TRUE)
+    glm.nrrf.goa1.pred <-  predict(glm.pol.goa1, newdata=list(fYear=factor(years[y]),
+                                                              fStratum=factor(stratum[x])), se=TRUE)
+    glm.ylfs.goa1.pred <-  predict(glm.pol.goa1, newdata=list(fYear=factor(years[y]),
+                                                              fStratum=factor(stratum[x])), se=TRUE)
+    
+    # Populate our output vectors:
+    CPUE.glm.pol1[y] <- exp(glm.pol.goa1.pred$fit + (sigmas1[1]^2)/2)
+    CPUE.glm.nrrf1[y] <- exp(glm.nrrf.goa1.pred$fit + (sigmas1[2]^2)/2)
+    CPUE.glm.ylfs1[y] <- exp(glm.ylfs.goa1.pred$fit + (sigmas1[3]^2)/2)
+    
+  }
+}
+
+stratum.model.df <- data.frame(
+  "model.walleye.pollock" = CPUE.glm.pol1, 
+  "model.northern.rockfish" = CPUE.glm.nrrf1, 
+  "model.yellowfin.sole" = CPUE.glm.ylfs1
+)
+
+stratum.model.df
 
 
 
+### GAM Models
+library(mgcv)
 
+gam.pol.goa <- gam(log(Weight.CPUE..kg.km2.+1) ~ fYear + fStratum + s(Gear.Depth), data=load.dat)
+gam.nrrf.goa <- gam(log(Weight.CPUE..kg.km2.+1) ~ fYear + fStratum + s(Gear.Depth), data=nrrf.dat)
+gam.ylfs.goa <- gam(log(Weight.CPUE..kg.km2.+1) ~ fYear + fStratum + s(Gear.Depth), data=ylfs.dat)
 
+years <- sort(unique(load.dat$Year))
+n.years <- length(years)
+stratum <- sort(unique(load.dat$Stratum))
+n.stratum <- length(unique(load.dat$Stratum))
 
+# Create output vectors for GAM model predictions:
+CPUE.gam.pol <- rep(NA,length(years))
+CPUE.gam.nrrf <- rep(NA,length(years))
+CPUE.gam.ylfs <- rep(NA,length(years))
 
+# Calculate sigma from each model:
+sigmas2 <- rep(NA,3)
+sigmas2[1] <- sd(gam.pol.goa$residuals)
+sigmas2[2] <- sd(gam.nrrf.goa$residuals)
+sigmas2[3] <- sd(gam.ylfs.goa$residuals)
 
+y <- 1
+x <- 1
+for (x in 1:n.stratum) {
+  for(y in 1:n.years) {
+  
+    # Predict lnCPUE from GAM models:
+    gam.pol.goa.pred <-  predict(gam.pol.goa, newdata=list(fYear=factor(years[y]),
+                                                           fStratum=factor(stratum[x])), se=TRUE)
+    gam.nrrf.goa.pred <-  predict(gam.pol.goa, newdata=list(fYear=factor(years[y]),
+                                                            fStratum=factor(stratum[x])), se=TRUE)
+    gam.ylfs.goa.pred <-  predict(gam.pol.goa, newdata=list(fYear=factor(years[y]),
+                                                            fStratum=factor(stratum[x])), se=TRUE)
+    
+    # Populate our output vectors:
+    CPUE.gam.pol[y] <- exp(gam.pol.goa.pred$fit + (sigmas2[1]^2)/2)
+    CPUE.gam.nrrf[y] <- exp(gam.nrrf.goa.pred$fit + (sigmas2[2]^2)/2)
+    CPUE.gam.ylfs[y] <- exp(gam.ylfs.goa.pred$fit + (sigmas2[3]^2)/2)
+    
+  }
+}
 
+GAM.model.df <- data.frame(
+  "model.walleye.pollock" = CPUE.gam.pol, 
+  "model.northern.rockfish" = CPUE.gam.nrrf, 
+  "model.yellowfin.sole" = CPUE.gam.ylfs
+)
 
+GAM.model.df
