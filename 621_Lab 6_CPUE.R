@@ -692,79 +692,27 @@ biomass
 
 goa.data <- bts.dat %>% filter(Common.Name %in% c("northern rockfish","yellowfin sole"), Survey=="GOA")
 
-# 1) Calculate sum and variance in cpue by year and stratum
 cstrat1 <- data.frame(goa.data %>% group_by(Year, Stratum, Common.Name) %>% 
                        summarize(CPUE=sum(Weight.CPUE..kg.km2.), CPUEvar=var(Weight.CPUE..kg.km2.))) #dplyr
 
-# Lets inspect this new object
-str(cstrat1)
-head(cstrat1)
-
-# 2) Calculate number of hauls in each year and stratum
-#     In order to determine y_bar_h the average biomass per stratum,
-#       we will need to know the number of hauls that occurred within each stratum in 
-#         each year.
-#   We can do this by summarizing our data by Year and Stratum and counting the number
-#      of unique HAUL.JOIN.IDs
-#   These represent unique identifiers for each sampling event
-
-hstrat1 <- data.frame(goa.data %>% group_by(Year, Stratum, Common.Name) %>% summarize(n_sta=length(unique(Haul.Join.ID)))) #dplyr
-
-str(hstrat1)
-head(hstrat1)
+hstrat1 <- data.frame(goa.data %>% group_by(Year, Stratum) %>% summarize(n_sta=length(unique(Haul.Join.ID)))) #dplyr
 
 
-# 3) Next we will join our prior table of average CPUE and variance in CPUE
-#      by strata and year with our number of survey observations per for each stratum and year
-biomvar1 <- left_join(cstrat1, hstrat1, by=c("Year", "Stratum", "Common.Name")) #dplyr
+biomvar1 <- left_join(cstrat1, hstrat1, by=c("Year", "Stratum")) #dplyr
 colnames(biomvar1) <- c("YEAR","STRATUM","COMMON.NAME","CPUE","VAR","n_stations")
 
-# Inspect the resulting object
-str(biomvar1)
-head(biomvar1)
-
-
-# 4) Next need our data for the individual strata to calculate the area of each
-#      strata so we can scale up our biomass estimates for each stratm
-
-# We already loaded it, so we can re-familiarize ourselves here...
-head(strata.data)
-
-# 
-
-# 5) We will then filter the strata data for the correct survey area
-#      and just extract the variables (columns) we need
-
-strata.area <- strata.data %>% filter(Survey=="GOA") %>% select("Stratum", "Area..km2.", 
+strata.area1 <- strata.data %>% filter(Survey=="GOA") %>% select("Stratum", "Area..km2.", 
                                                                 "Stratum.INPFC.Area","Stratum.Regulatory.Area.Name")
-names(strata.area) <- c("STRATUM","AREA","INPFC_AREA","REGULATORY.AREA")
+names(strata.area1) <- c("STRATUM","AREA","INPFC_AREA","REGULATORY.AREA")
 
-# What is the average size in km^2 for our strata, and the distribution
-summary(strata.area$AREA)
-
-hist(strata.area$AREA)
-
-# 6) We will need to join our strata area data to the CPUE data by year and stratum
-#      we previously calculated.
-
-# A left_join() will allow us to attach the strata area info to our CPUE object
-biomvar1 <- left_join(biomvar1, strata.area, by=c("STRATUM")) #dplyr
+biomvar1 <- left_join(biomvar1, strata.area1, by=c("STRATUM")) #dplyr
 
 head(biomvar1)
-
-# 7) Next we will calculate our key summary information by year and strata
-
-# We can calculate the biomass (kg) per stratum by:
-#   a) calculating the average cpue/station within each stratum, and multiplying that 
-#        by the area of each stratum
 
 biomvar1$BIOMASS<-(biomvar1$CPUE/biomvar1$n_stations)*biomvar1$AREA
 
-# The variance in biomass per stratum is the (area)^2 * (variance/number of stations)
 biomvar1$VAR2<-biomvar1$AREA^2*(biomvar1$VAR/biomvar1$n_stations)
 
-# 8) Finally, we can calculate our total biomass and variance in biomass
-#      by summing across strata
 
 
 biomass.northern.rockfish <- data.frame(biomvar1 %>% 
