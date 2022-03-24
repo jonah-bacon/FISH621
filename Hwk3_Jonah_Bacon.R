@@ -237,6 +237,8 @@ summary(biomass.index)
 
 visreg(biomass.index)
 
+performance::check_model(biomass.index)
+
 sigma <- sd(biomass.index$residuals)                                           
 sigma
 
@@ -270,6 +272,9 @@ summary(biomass.index2)
 
 visreg(biomass.index2)
 
+performance::check_model(biomass.index2)
+
+
 sigma2 <- sd(biomass.index2$residuals)                                           
 sigma2
 
@@ -298,4 +303,3 @@ ggplot(data = glm.year.stratum.preds, aes(x = Year, y = CPUE.preds, color = fStr
     axis.line=element_line(),
   )
 
-https://join.slack.com/t/slack-dub7864/shared_invite/zt-15sydbefr-bDFJvDeXZUF9oR3dlsR2LA
