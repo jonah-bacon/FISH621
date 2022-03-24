@@ -8,9 +8,9 @@
 
 # Load packages -----------------------------------------------------------
 
-library(tidyr)
 library(tidyverse)
 library(ggplot2)
+library(visreg)
 
 # Problem 1 ---------------------------------------------------------------
 
@@ -162,25 +162,97 @@ head(perch.dat)
 str(strat.dat)
 head(strat.dat)
 
+strata.area <- strat.dat %>% select("Stratum", "Area..km2.")
+names(strata.area) <- c("Stratum","Area")
+
+perch.dat <- perch.dat %>% filter(Common.Name == "Pacific ocean perch", Survey == "GOA")
+perch.dat <- left_join(perch.dat, strata.area, by = c("Stratum"))
+
 # Part 1
 
-yearly.total.biomass.cpue <- perch.dat %>% 
-  filter(Common.Name == "Pacific ocean perch") %>% 
+yearly.total.stratum.biomass <- perch.dat %>% 
   group_by(Year) %>% 
-  summarize("Total.Biomass.CPUE" = sum(Weight.CPUE..kg.km2.))
-print(yearly.total.biomass.cpue)
+  summarize(
+    "Total.Stratum.Biomass" = sum(Weight.CPUE..kg.km2.),
+  )
+print(yearly.total.stratum.biomass)
 
-ggplot(data = yearly.total.biomass.cpue, aes(x = Year, y = Total.Biomass.CPUE)) +
+ggplot(data = yearly.total.stratum.biomass, aes(x = Year, y = Total.Stratum.Biomass)) +
   geom_point() +
   geom_line()
 
 # Part 2
 
 yearly.n.stations <- perch.dat %>% 
-  filter(Common.Name == "Pacific ocean perch") %>% 
   group_by(Year) %>% 
-  summarize("n.stations" = length(unique(Haul.Join.ID)))
+  summarize(
+    "Total.Stratum.Biomass" = sum(Weight.CPUE..kg.km2.),
+    "N.stations" = length(unique(Haul.Join.ID)))
 yearly.n.stations
+
+ggplot(data = yearly.n.stations, aes(x = Year, y = N.stations)) +
+  geom_point() +
+  geom_line()
 
 # Part 3
 
+area.weighted.biomass <- perch.dat %>% 
+  group_by(Year,Stratum) %>% 
+  summarize(
+    "Total.Stratum.Biomass" = sum(Weight.CPUE..kg.km2.),
+    "Total.Stratum.Biomass.Var" = var(Weight.CPUE..kg.km2.),
+    "N.stations" = length(unique(Haul.Join.ID)),
+    "Area" = mean(Area),
+    "Area.Weighted.Biomass" = (Total.Stratum.Biomass/N.stations) * Area,
+    "Area.Weighted.Biomass.Var" = Area^2 * (Total.Stratum.Biomass.Var/N.stations)
+  )
+
+design.based.biomass.est <- data.frame(area.weighted.biomass %>% group_by(Year) %>%
+                        summarize(Biomass=sum(Area.Weighted.Biomass, na.rm=TRUE)/1e3,
+                                  Variance=sum(Area.Weighted.Biomass.Var, na.rm=TRUE)/(1e3^2),
+                                  SD=sqrt(sum(Area.Weighted.Biomass.Var, na.rm=TRUE))/1e3,
+                                  CV=SD/(sum(Area.Weighted.Biomass, na.rm=TRUE)/1e3)))
+design.based.biomass.est
+
+ggplot(data = design.based.biomass.est, aes(x = Year, y = Biomass)) +
+  geom_point() +
+  geom_line()
+
+# Part 4
+
+perch.dat$fYear <- factor(perch.dat$Year)
+
+biomass.index <- glm(log(Weight.CPUE..kg.km2. + 1) ~ fYear, data = perch.dat)
+summary(biomass.index)
+
+visreg(biomass.index)
+
+
+biomass.index.pred <-  predict(biomass.index, newdata=list(fYear=sort(unique(perch.dat$fYear))), se=TRUE)
+biomass.index.pred
+
+sigma <- sd(biomass.index$residuals)                                           
+sigma
+
+CPUE.glm.perch <- exp(biomass.index.pred$fit + (sigma^2)/2)
+CPUE.glm.perch
+
+plot(x = design.based.biomass.est$Year, y = CPUE.glm.perch)
+
+## a
+
+perch.dat$fStratum <- factor(perch.dat$Stratum)
+
+biomass.index2 <- glm(log(Weight.CPUE..kg.km2. + 1) ~ fYear + fStratum, data = perch.dat)
+summary(biomass.index2)
+
+visreg(biomass.index2)
+
+biomass.index.pred2 <-  predict(biomass.index2, newdata=list(fYear=sort(unique(perch.dat$fYear)), fStratum = sort(unique(perch.dat$fStratum))))
+biomass.index.pred2
+
+sigma2 <- sd(biomass.index2$residuals)                                           
+sigma2
+
+CPUE.glm2.perch <- exp(biomass.index.pred2$fit + (sigma2^2)/2)
+CPUE.glm2.perch
