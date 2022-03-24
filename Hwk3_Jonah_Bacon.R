@@ -216,7 +216,17 @@ design.based.biomass.est
 
 ggplot(data = design.based.biomass.est, aes(x = Year, y = Biomass)) +
   geom_point() +
-  geom_line()
+  geom_line() +
+  ylab("Biomass") +
+  xlab("Year") +
+  scale_x_continuous(limits=c(1984,2021),breaks=c(glm.year.preds$Year), expand = c(0,1)) +
+  theme(
+    panel.background = element_blank(),
+    axis.title.x = element_text(size=16, vjust = 0),
+    axis.title.y = element_text(size =16),
+    axis.text = element_text(size=13, color="black"), 
+    axis.line=element_line()
+  )
 
 # Part 4
 
@@ -227,17 +237,29 @@ summary(biomass.index)
 
 visreg(biomass.index)
 
-
-biomass.index.pred <-  predict(biomass.index, newdata=list(fYear=sort(unique(perch.dat$fYear))), se=TRUE)
-biomass.index.pred
-
 sigma <- sd(biomass.index$residuals)                                           
 sigma
 
-CPUE.glm.perch <- exp(biomass.index.pred$fit + (sigma^2)/2)
-CPUE.glm.perch
+glm.year.preds <- perch.dat %>% 
+  group_by(Year) %>% 
+  summarise(
+    "log.CPUE.preds" = predict(biomass.index, newdata = list(fYear = factor(unique(Year)))),
+    "CPUE.preds" = exp(log.CPUE.preds + (sigma^2)/2))
+glm.year.preds
 
-plot(x = design.based.biomass.est$Year, y = CPUE.glm.perch)
+ggplot(data = glm.year.preds, aes(x = Year, y = CPUE.preds)) +
+  geom_point() +
+  geom_line() +
+  ylab("CPUE predictions") +
+  xlab("Year") +
+  scale_x_continuous(limits=c(1984,2021),breaks=c(glm.year.preds$Year), expand = c(0,1)) +
+  theme(
+    panel.background = element_blank(),
+    axis.title.x = element_text(size=16, vjust = 0),
+    axis.title.y = element_text(size =16),
+    axis.text = element_text(size=13, color="black"), 
+    axis.line=element_line()
+  )
 
 ## a
 
@@ -248,11 +270,32 @@ summary(biomass.index2)
 
 visreg(biomass.index2)
 
-biomass.index.pred2 <-  predict(biomass.index2, newdata=list(fYear=sort(unique(perch.dat$fYear)), fStratum = sort(unique(perch.dat$fStratum))))
-biomass.index.pred2
-
 sigma2 <- sd(biomass.index2$residuals)                                           
 sigma2
 
-CPUE.glm2.perch <- exp(biomass.index.pred2$fit + (sigma2^2)/2)
-CPUE.glm2.perch
+glm.year.stratum.preds <- perch.dat %>% 
+  group_by(Year, fStratum) %>% 
+  summarise(
+    "log.CPUE.preds" = predict(biomass.index2, newdata = list(fYear = factor(unique(Year)), fStratum = unique(fStratum))),
+    "CPUE.preds" = exp(log.CPUE.preds + (sigma2^2)/2))
+glm.year.stratum.preds
+
+ggplot(data = glm.year.stratum.preds, aes(x = Year, y = CPUE.preds, color = fStratum)) +
+  geom_point() +
+  geom_line() +
+  geom_point(data = glm.year.preds, aes(x = Year, y = CPUE.preds), cex = 2, color = "black") +
+  geom_line(data = glm.year.preds, aes(x = Year, y = CPUE.preds), cex = 0.7, color = "black") +
+  ylab("CPUE predictions") +
+  xlab("Year") +
+  labs(color = "Stratum") +
+  scale_x_continuous(limits=c(1984,2021),breaks=c(glm.year.preds$Year), expand = c(0,1)) +
+  scale_y_continuous(limits=c(0,162000),breaks=seq(0,150000,25000), expand = c(0,1000)) +
+  theme(
+    panel.background = element_blank(),
+    axis.title.x = element_text(size=16, vjust = 0),
+    axis.title.y = element_text(size =16),
+    axis.text = element_text(size=13, color="black"), 
+    axis.line=element_line(),
+  )
+
+https://join.slack.com/t/slack-dub7864/shared_invite/zt-15sydbefr-bDFJvDeXZUF9oR3dlsR2LA
