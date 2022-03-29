@@ -10,7 +10,7 @@
 #==================================================================================================
 
 
-setwd("/Users/curryc2/Documents/Students/2022/622 - Estimation of Fish Abundance -2022/Content/Week 7/Lab")
+# setwd("/Users/curryc2/Documents/Students/2022/622 - Estimation of Fish Abundance -2022/Content/Week 7/Lab")
 
 # Exercise 1: Loading Required Packages ========================================
 
