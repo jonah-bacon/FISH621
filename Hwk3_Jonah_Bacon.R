@@ -170,16 +170,26 @@ perch.dat <- left_join(perch.dat, strata.area, by = c("Stratum"))
 
 # Part 1
 
-yearly.total.stratum.biomass <- perch.dat %>% 
+total.cpue.biomass <- perch.dat %>% 
   group_by(Year) %>% 
   summarize(
-    "Total.Stratum.Biomass" = sum(Weight.CPUE..kg.km2.),
+    "Total.CPUE.Biomass" = sum(Weight.CPUE..kg.km2.),
   )
-print(yearly.total.stratum.biomass)
+print(total.cpue.biomass)
 
-ggplot(data = yearly.total.stratum.biomass, aes(x = Year, y = Total.Stratum.Biomass)) +
+ggplot(data = total.cpue.biomass, aes(x = Year, y = Total.CPUE.Biomass)) +
   geom_point() +
-  geom_line()
+  geom_line() +
+  scale_x_continuous(limits = c(1984,2021), breaks = seq(1980, 2020, 5)) +
+  ylab("Total CPUE Biomass") +
+  theme(
+    panel.background = element_blank(),
+    axis.title.x = element_text(size=16, vjust = 0),
+    axis.title.y = element_text(size =16),
+    axis.text = element_text(size=13, color="black"),
+    axis.line=element_line(),
+  )
+ggsave("hwk3.prob3.1.png")
 
 # Part 2
 
@@ -192,7 +202,17 @@ yearly.n.stations
 
 ggplot(data = yearly.n.stations, aes(x = Year, y = N.stations)) +
   geom_point() +
-  geom_line()
+  geom_line() +
+  scale_x_continuous(limits = c(1984,2021), breaks = seq(1980, 2020, 5)) +
+  ylab("Number of stations sampled") +
+  theme(
+    panel.background = element_blank(),
+    axis.title.x = element_text(size=16, vjust = 0),
+    axis.title.y = element_text(size =16),
+    axis.text = element_text(size=13, color="black"),
+    axis.line=element_line(),
+  )
+ggsave("hwk3.prob3.2.png")
 
 # Part 3
 
@@ -214,11 +234,6 @@ design.based.biomass.est <- data.frame(area.weighted.biomass %>% group_by(Year) 
                                   SD=sqrt(sum(Area.Weighted.Biomass.Var, na.rm=TRUE))/1e3,
                                   CV=SD/(sum(Area.Weighted.Biomass, na.rm=TRUE)/1e3)))
 design.based.biomass.est
-
-design.preds <- design.based.biomass.est %>% 
-  select(Year, Biomass) %>% 
-  mutate("method" = rep("design",length(Year)), "preds" = Biomass)
-design.preds
 
 ggplot(data = design.based.biomass.est, aes(x = Year, y = Biomass)) +
   geom_point() +
@@ -336,3 +351,4 @@ ggplot(data = catch.preds.df, aes(x = Year, y = preds, fill = method)) +
     axis.line=element_line(),
     strip.text = element_text(size = 14)
   )
+ggsave("hwk3.prob3.4b.png", height = 4, width = 12, units = "in")
