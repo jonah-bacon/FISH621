@@ -235,7 +235,7 @@ ggplot(data = design.based.biomass.est, aes(x = Year, y = Biomass)) +
   )
 
 # Part 4
-
+## Model-based estimates w/ year
 perch.dat$fYear <- factor(perch.dat$Year)
 
 biomass.index <- glm(log(Weight.CPUE..kg.km2. + 1) ~ fYear, data = perch.dat)
@@ -269,7 +269,7 @@ ggplot(data = glm.year.preds, aes(x = Year, y = CPUE.preds)) +
     axis.line=element_line()
   )
 
-## a
+## Model-based estimates w/ year + stratum
 
 perch.dat$fStratum <- factor(perch.dat$Stratum)
 
@@ -320,24 +320,19 @@ catch.preds.df <- rbind(
 catch.preds.df
 
 
-ggplot(data = catch.preds.df, aes(x = Year, y = preds)) +
-  geom_point() +
-  geom_line() +
-  ylab("CPUE predictions") +
-  xlab("Year") +
-  labs(color = "Stratum") +
-  scale_x_continuous(limits=c(1984,2021),breaks=c(glm.model.preds1$Year), expand = c(0,1)) +
-  scale_y_continuous(limits=c(0,25000),breaks=seq(0,25000,5000), expand = c(0,100))
 
+id.labs <- c("Design-based est.","Model-based. est (w/ year)","Model-based. est (w/ year + strata)")
+names(id.labs) <- c("design","model.year","model.year+stratum")
 
 ggplot(data = catch.preds.df, aes(x = Year, y = preds, fill = method)) +
-  geom_area(alpha=0.5) +
-  facet_wrap(~method, scales="free_y") +
-  # scale_fill_continuous(name = "Species", labels = c("Broad whitefish", "Humpback whitefish", "Least cisco"))+
+  geom_area(alpha=0.5, show.legend = F) +
+  facet_wrap(~method, scales="free_y", labeller = labeller(method = id.labs)) +
+  ylab("Relative population prediction") +  
   theme(
     panel.background = element_blank(),
     axis.title.x = element_text(size=16, vjust = 0),
     axis.title.y = element_text(size =16),
     axis.text = element_text(size=13, color="black"),
-    axis.line=element_line()
+    axis.line=element_line(),
+    strip.text = element_text(size = 14)
   )
