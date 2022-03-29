@@ -77,15 +77,12 @@ moose.dat$str <- as.factor(moose.dat$str)
 moose.N.h <- c(122,57,22)
 moose.h <- c(1,2,3)
 
-str.1 <- moose.dat %>% filter(str == 1)
-str.2 <- moose.dat %>% filter(str == 2)
-str.3 <- moose.dat %>% filter(str == 3)
-
 # Part 1
 
 moose.n.h <- moose.dat %>% 
   group_by(str) %>% 
   summarise("n.h" = length(str))
+moose.n.h
 moose.n.h <- moose.n.h$n.h
 moose.n.h
 
@@ -110,6 +107,7 @@ moose.y.bar.st
 moose.s.h <- moose.dat %>% 
   group_by(str) %>% 
   summarize("s.h" = ( 1/(length(str) - 1) ) * sum( (moose - (1/length(str) * sum(moose)) )^2 ) )
+moose.s.h
 moose.s.h <- moose.s.h$s.h
 moose.s.h
 
@@ -162,7 +160,9 @@ head(perch.dat)
 str(strat.dat)
 head(strat.dat)
 
-strata.area <- strat.dat %>% select("Stratum", "Area..km2.")
+strata.area <- strat.dat %>% 
+  filter(Survey == "GOA") %>% 
+  select("Stratum", "Area..km2.")
 names(strata.area) <- c("Stratum","Area")
 
 perch.dat <- perch.dat %>% filter(Common.Name == "Pacific ocean perch", Survey == "GOA")
@@ -202,17 +202,23 @@ area.weighted.biomass <- perch.dat %>%
     "Total.Stratum.Biomass" = sum(Weight.CPUE..kg.km2.),
     "Total.Stratum.Biomass.Var" = var(Weight.CPUE..kg.km2.),
     "N.stations" = length(unique(Haul.Join.ID)),
-    "Area" = mean(Area),
+    "Area" = unique(Area),
     "Area.Weighted.Biomass" = (Total.Stratum.Biomass/N.stations) * Area,
     "Area.Weighted.Biomass.Var" = Area^2 * (Total.Stratum.Biomass.Var/N.stations)
   )
+area.weighted.biomass
 
 design.based.biomass.est <- data.frame(area.weighted.biomass %>% group_by(Year) %>%
-                        summarize(Biomass=sum(Area.Weighted.Biomass, na.rm=TRUE)/1e3,
+                        summarize(Biomass=sum(Area.Weighted.Biomass, na.rm=TRUE)/1e3, # Question - Why do we divide by 1000?
                                   Variance=sum(Area.Weighted.Biomass.Var, na.rm=TRUE)/(1e3^2),
                                   SD=sqrt(sum(Area.Weighted.Biomass.Var, na.rm=TRUE))/1e3,
                                   CV=SD/(sum(Area.Weighted.Biomass, na.rm=TRUE)/1e3)))
 design.based.biomass.est
+
+design.preds <- design.based.biomass.est %>% 
+  select(Year, Biomass) %>% 
+  mutate("method" = rep("design",length(Year)), "preds" = Biomass)
+design.preds
 
 ggplot(data = design.based.biomass.est, aes(x = Year, y = Biomass)) +
   geom_point() +
@@ -242,12 +248,12 @@ performance::check_model(biomass.index)
 sigma <- sd(biomass.index$residuals)                                           
 sigma
 
-glm.year.preds <- perch.dat %>% 
+glm.model.preds1 <- perch.dat %>% 
   group_by(Year) %>% 
   summarise(
     "log.CPUE.preds" = predict(biomass.index, newdata = list(fYear = factor(unique(Year)))),
-    "CPUE.preds" = exp(log.CPUE.preds + (sigma^2)/2))
-glm.year.preds
+    "CPUE.preds" = exp(log.CPUE.preds + (sigma^2)/2) - 1)
+glm.model.preds1
 
 ggplot(data = glm.year.preds, aes(x = Year, y = CPUE.preds)) +
   geom_point() +
@@ -278,28 +284,60 @@ performance::check_model(biomass.index2)
 sigma2 <- sd(biomass.index2$residuals)                                           
 sigma2
 
-glm.year.stratum.preds <- perch.dat %>% 
-  group_by(Year, fStratum) %>% 
+glm.model.preds2 <- perch.dat %>% 
+  group_by(Year) %>% 
   summarise(
-    "log.CPUE.preds" = predict(biomass.index2, newdata = list(fYear = factor(unique(Year)), fStratum = unique(fStratum))),
-    "CPUE.preds" = exp(log.CPUE.preds + (sigma2^2)/2))
-glm.year.stratum.preds
+    "log.CPUE.preds" = predict(biomass.index2, newdata = list(fYear = factor(unique(Year)), fStratum = rep(factor(10)))),
+    "CPUE.preds" = exp(log.CPUE.preds + (sigma2^2)/2) - 1)
+glm.model.preds2
 
-ggplot(data = glm.year.stratum.preds, aes(x = Year, y = CPUE.preds, color = fStratum)) +
+
+### Visualize and compare between the three methods:
+
+design.preds <- design.based.biomass.est %>% 
+  select(Year, Biomass) %>% 
+  mutate("method" = rep("design",length(Year)), "preds" = Biomass) %>% 
+  select(Year, method, preds)
+design.preds
+
+glm.model.preds1 <- glm.model.preds1 %>% 
+  select(Year, CPUE.preds) %>% 
+  mutate("method" = rep("model.year", length(Year)), "preds" = CPUE.preds) %>% 
+  select(Year, method, preds)
+glm.model.preds1
+
+glm.model.preds2 <- glm.model.preds2 %>% 
+  select(Year, CPUE.preds) %>% 
+  mutate("method" = rep("model.year+stratum", length(Year)), "preds" = CPUE.preds) %>% 
+  select(Year, method, preds)
+glm.model.preds2
+
+catch.preds.df <- rbind(
+  design.preds,
+  glm.model.preds1,
+  glm.model.preds2
+)
+catch.preds.df
+
+
+ggplot(data = catch.preds.df, aes(x = Year, y = preds)) +
   geom_point() +
   geom_line() +
-  geom_point(data = glm.year.preds, aes(x = Year, y = CPUE.preds), cex = 2, color = "black") +
-  geom_line(data = glm.year.preds, aes(x = Year, y = CPUE.preds), cex = 0.7, color = "black") +
   ylab("CPUE predictions") +
   xlab("Year") +
   labs(color = "Stratum") +
-  scale_x_continuous(limits=c(1984,2021),breaks=c(glm.year.preds$Year), expand = c(0,1)) +
-  scale_y_continuous(limits=c(0,162000),breaks=seq(0,150000,25000), expand = c(0,1000)) +
+  scale_x_continuous(limits=c(1984,2021),breaks=c(glm.model.preds1$Year), expand = c(0,1)) +
+  scale_y_continuous(limits=c(0,25000),breaks=seq(0,25000,5000), expand = c(0,100))
+
+
+ggplot(data = catch.preds.df, aes(x = Year, y = preds, fill = method)) +
+  geom_area(alpha=0.5) +
+  facet_wrap(~method, scales="free_y") +
+  # scale_fill_continuous(name = "Species", labels = c("Broad whitefish", "Humpback whitefish", "Least cisco"))+
   theme(
     panel.background = element_blank(),
     axis.title.x = element_text(size=16, vjust = 0),
     axis.title.y = element_text(size =16),
-    axis.text = element_text(size=13, color="black"), 
-    axis.line=element_line(),
+    axis.text = element_text(size=13, color="black"),
+    axis.line=element_line()
   )
-
