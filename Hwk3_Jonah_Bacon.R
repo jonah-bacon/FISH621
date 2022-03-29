@@ -225,7 +225,7 @@ ggplot(data = design.based.biomass.est, aes(x = Year, y = Biomass)) +
   geom_line() +
   ylab("Biomass") +
   xlab("Year") +
-  scale_x_continuous(limits=c(1984,2021),breaks=c(glm.year.preds$Year), expand = c(0,1)) +
+  scale_x_continuous(limits=c(1984,2021),breaks=c(unique(design.based.biomass.est$Year)), expand = c(0,1)) +
   theme(
     panel.background = element_blank(),
     axis.title.x = element_text(size=16, vjust = 0),
@@ -255,12 +255,12 @@ glm.model.preds1 <- perch.dat %>%
     "CPUE.preds" = exp(log.CPUE.preds + (sigma^2)/2) - 1)
 glm.model.preds1
 
-ggplot(data = glm.year.preds, aes(x = Year, y = CPUE.preds)) +
+ggplot(data = glm.model.preds1, aes(x = Year, y = CPUE.preds)) +
   geom_point() +
   geom_line() +
   ylab("CPUE predictions") +
   xlab("Year") +
-  scale_x_continuous(limits=c(1984,2021),breaks=c(glm.year.preds$Year), expand = c(0,1)) +
+  scale_x_continuous(limits=c(1984,2021),breaks=c(glm.model.preds1$Year), expand = c(0,1)) +
   theme(
     panel.background = element_blank(),
     axis.title.x = element_text(size=16, vjust = 0),
