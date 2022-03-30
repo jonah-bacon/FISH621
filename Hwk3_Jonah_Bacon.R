@@ -99,7 +99,7 @@ moose.y.bar.h
 
 # Part 3
 
-moose.y.bar.st <- (1/sum(moose.N.h)) * sum(moose.N.h * y.bar.h)
+moose.y.bar.st <- (1/sum(moose.N.h)) * sum(moose.N.h * moose.y.bar.h)
 moose.y.bar.st
 
 # Part 4
@@ -113,7 +113,7 @@ moose.s.h
 
 # Part 5
 
-moose.var.hat_y.bar.st <- sum( (moose.N.h/sum(moose.N.h))^2 * ((moose.N.h - n.h)/moose.N.h) * (s.h/n.h) )
+moose.var.hat_y.bar.st <- sum( (moose.N.h/sum(moose.N.h))^2 * ((moose.N.h - moose.n.h)/moose.N.h) * (moose.s.h/moose.n.h) )
 moose.var.hat_y.bar.st
 
 # Part 6
@@ -189,7 +189,7 @@ ggplot(data = total.cpue.biomass, aes(x = Year, y = Total.CPUE.Biomass)) +
     axis.text = element_text(size=13, color="black"),
     axis.line=element_line(),
   )
-ggsave("hwk3.prob3.1.png")
+# ggsave("hwk3.prob3.1.png")
 
 # Part 2
 
@@ -212,7 +212,7 @@ ggplot(data = yearly.n.stations, aes(x = Year, y = N.stations)) +
     axis.text = element_text(size=13, color="black"),
     axis.line=element_line(),
   )
-ggsave("hwk3.prob3.2.png")
+# ggsave("hwk3.prob3.2.png")
 
 # Part 3
 
@@ -235,6 +235,8 @@ design.based.biomass.est <- data.frame(area.weighted.biomass %>% group_by(Year) 
                                   CV=SD/(sum(Area.Weighted.Biomass, na.rm=TRUE)/1e3)))
 design.based.biomass.est
 
+
+
 ggplot(data = design.based.biomass.est, aes(x = Year, y = Biomass)) +
   geom_point() +
   geom_line() +
@@ -255,10 +257,10 @@ perch.dat$fYear <- factor(perch.dat$Year)
 
 biomass.index <- glm(log(Weight.CPUE..kg.km2. + 1) ~ fYear, data = perch.dat)
 summary(biomass.index)
-
-visreg(biomass.index)
-
-performance::check_model(biomass.index)
+# 
+# visreg(biomass.index)
+# 
+# performance::check_model(biomass.index)
 
 sigma <- sd(biomass.index$residuals)                                           
 sigma
@@ -291,9 +293,9 @@ perch.dat$fStratum <- factor(perch.dat$Stratum)
 biomass.index2 <- glm(log(Weight.CPUE..kg.km2. + 1) ~ fYear + fStratum, data = perch.dat)
 summary(biomass.index2)
 
-visreg(biomass.index2)
-
-performance::check_model(biomass.index2)
+# visreg(biomass.index2)
+# 
+# performance::check_model(biomass.index2)
 
 
 sigma2 <- sd(biomass.index2$residuals)                                           
