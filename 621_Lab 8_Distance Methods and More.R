@@ -291,11 +291,24 @@ summary(nest.model1)
 
 # SOLUTION ================================
 
+nest.model1 <- ds(nests, key="hn", adjustment=NULL, convert_units=0.001) # AIC = 928.134
 
+summary(nest.model1$ddf) # p = 0.8693, N_a = 614.2533
+nest.model1$dht$individuals$summary
+nest.model1$dht$individuals$N # N_hat = 2011.232 (CV = 0.059)
+nest.model1$dht$individuals$D # D = 49.7 (CV = 0.059)
+summary(nest.model1)
 
+nest.model2 <- ds(nests, key="hr", adjustment=NULL, convert_units=0.001)  # AIC = 929.793
 
+plot(nest.model2, nc=12)
+gof_ds(nest.model2)
 
-
+summary(nest.model2$ddf) # p = 0.8891, N_a = 600.6309
+nest.model2$dht$individuals$summary
+nest.model2$dht$individuals$N # N_hat = 1966.629 (CV = 0.0677)
+nest.model2$dht$individuals$D # D = 48.59 (CV = 0.0677)
+summary(nest.model2)
 
 
 
