@@ -369,7 +369,7 @@ hist(minke$distance, xlab="Distance (nautical miles)")
 # This is done to exclude very infrequent observations that might
 #   have high leverage on the tail shape of the detection function
 
-minke_df <- ds(minke, truncation=1.5, adjustment=NULL)
+minke_df <- ds(minke, truncation=1.5, adjustment=NULL) # AIC = 46.872
 
 
 # First let's inspect the fit of the detection function to the 
