@@ -509,7 +509,7 @@ fit <- stan(file="Petersen.stan",
 fit
 
 # Alternative for extracting summary
-summary(fit)$summary
+summary(fit)$summary # 95% CI = 757, 1998
 
 # Inference: Our number of effective posterior samples is decently high,
 #              and our Rhat for our single parameter N is close to 1 (less than 1.1)
@@ -584,7 +584,7 @@ fit <- stan(file="Petersen.stan",
 fit
 
 # Alternative for extracting summary
-summary(fit)$summary
+summary(fit)$summary # 95% CI = 813, 1137
 
 # The first thing we notice is that we get a much tighter 95% CI, which
 #   still encompasses the true value N=1,000.
@@ -648,7 +648,7 @@ fit <- stan(file="Petersen.stan",
 # Extracting Outputs
 fit
 
-summary(fit)$summary
+summary(fit)$summary # 95% CI = 785, 1335
 
 # Extracting posterior samples for each parameter
 pars <- rstan::extract(fit)
@@ -839,6 +839,10 @@ abline(h=N, lwd=3, col=rgb(1,0,0, alpha=0.5))
 # WHAT DO YOU NOTICE ABOUT THE RELATIONSHIP BETWEEN THE SIMULATED M2 VALUE,
 #   AND THE RESULTING ESTIMATE OF ABUNDANCE?
 
+# There is a much higher variance in N_hat variance estimates between m2 simulation events with reduced n2 effort.
+# Variance estimates are generally larger with reduced n2 effort.
+# Less simulations encompass the true N with reduced m2.
+# In effect, power is decreased with reduced n2 effort.
 
 # Exercise 5: VAST Exploration =================================================
 
