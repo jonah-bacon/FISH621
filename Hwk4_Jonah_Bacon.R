@@ -121,3 +121,42 @@ ggplot(data = abundance.estimate.table, aes(x = Sighting_model, y = Abundance_es
     legend.position = "none"
   )
 
+
+# Problem 2 ---------------------------------------------------------------
+
+nest.df <- read.csv("ducks-area-effort.csv")
+head(nest.df)
+str(nest.df)
+
+# Part 1
+
+nest.hn.model <- ds(nest.df, key = "hn", adjustment = NULL, convert_units = 0.001) # AIC = 928.134
+plot(nest.hn.model, nc=12)
+gof_ds(nest.hn.model) # p-value = 0.955
+
+nest.density.estimates <- data.frame(nest.hn.model$dht$individuals$D)
+nest.density.estimates
+
+nest.abundance.estimate <- data.frame(nest.hn.model$dht$individuals$N)
+nest.abundance.estimate
+
+# Part 2
+
+area.sampled <- nest.df %>% 
+  group_by(Sample.Label) %>% 
+  summarise("Area.Sampled" = 0.00125*2*unique(Effort))
+area.sampled
+
+# Part 3
+
+nest.df %>% 
+  filter(distance <= 1.25) %>% 
+  summarise("count" = n(), "density" = count/(0.00125*2*unique(Effort)*length(unique(Sample.Label))), "abundance" = density*unique(Area))
+
+# Part 4
+
+N <- (40.47*20)/(0.00125*2*128.75)
+N
+
+# Part 5
+
