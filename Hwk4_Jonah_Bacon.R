@@ -23,13 +23,13 @@ str(wren.df)
 # Part 1
 
 hist(wren.df$distance,
-     xlab = "Detection distance", ylab = "Count of wrens",
+     xlab = "Detection distance (m)", ylab = "Count of wrens",
      main = "Histogram of detection distances")
 
 # Part 2
 
 boxplot(wren.df$distance ~ wren.df$Sample.Label,
-        xlab = "Transect", ylab = "Detection distance")
+        xlab = "Transect", ylab = "Detection distance (m)")
 
 # Part 3
 
@@ -286,22 +286,52 @@ meat.glm_preds <- exp(meat.glm_ln.preds + sd(meat.glm$residuals)^2/2)-1
 
 # Part 4
 
-meat.glm2 <- glm(log(CPUE.meat+1) ~ factor(Season) + factor(Region), data=cpue)
+cpue$fRegion <- factor(cpue$Region)
+cpue$fRegion <- relevel(cpue$fRegion, ref="Shelikof")
+
+meat.glm2 <- glm(log(CPUE.meat+1) ~ factor(Season) + fRegion, data=cpue)
 summary(meat.glm2)
 # Use Shelikof as reference region
-meat.glm2_ln.preds <- predict(meat.glm2, newdata=list(Season=years, Region = rep("Shelikof", length(years))))
+meat.glm2_ln.preds <- predict(meat.glm2, newdata=list(Season=years, fRegion = rep("Shelikof", length(years))))
 meat.glm2_preds <- exp(meat.glm2_ln.preds + sd(meat.glm2$residuals)^2/2)-1
+
+meat.glm3 <- glm(log(CPUE.meat+1) ~ factor(Season) + factor(Region), data=cpue)
+summary(meat.glm3)
+meat.glm3_ln.preds <- predict(meat.glm3, newdata=list(Season=years, Region = rep("Shelikof", length(years))))
+meat.glm3_preds <- exp(meat.glm3_ln.preds + sd(meat.glm3$residuals)^2/2)-1
 
 # Part 5
 
 meat.model.preds <- data.frame(
-  "year" = years,
+  "year" = c(years,years),
   "model" = c(rep("Without region effect", length(meat.glm_preds)), rep("With region effect", length(meat.glm2_preds))),
   "prediction" = c(meat.glm_preds,meat.glm2_preds)
 )
 meat.model.preds
 
+meat.model.preds2 <- data.frame(
+  "year" = c(years,years),
+  "model" = c(rep("Without region effect", length(meat.glm_preds)), rep("With region effect", length(meat.glm3_preds))),
+  "prediction" = c(meat.glm_preds,meat.glm3_preds)
+)
+meat.model.preds2
+
 ggplot(data = meat.model.preds, aes(x = year, y = prediction, color = model)) +
+  geom_line(cex = 1.2) +
+  geom_point(cex = 4) +
+  xlab("Year") +
+  ylab("Model-based meat weight CPUE prediction") +
+  scale_x_continuous(limits = c(2000,2020), breaks = seq(2000,2020,1), expand = c(0,0.2)) +
+  scale_color_manual(values=cbPalette[c(6,2)], name = "Model") +
+  theme(
+    panel.background = element_blank(),
+    axis.title.x = element_text(size=16, vjust = 0.5),
+    axis.title.y = element_text(size =16, vjust = 1.5),
+    axis.text = element_text(size=9, color="black"), 
+    axis.line=element_line()
+  )
+
+ggplot(data = meat.model.preds2, aes(x = year, y = prediction, color = model)) +
   geom_line(cex = 1.2) +
   geom_point(cex = 4) +
   xlab("Year") +
@@ -336,7 +366,7 @@ round.glm2_preds <- exp(round.glm2_ln.preds + sd(round.glm2$residuals)^2/2)-1
 # Part 8
 
 round.model.preds <- data.frame(
-  "year" = years,
+  "year" = c(years, years),
   "model" = c(rep("Without region effect", length(round.glm_preds)), rep("With region effect", length(round.glm2_preds))),
   "prediction" = c(round.glm_preds,round.glm2_preds)
 )
