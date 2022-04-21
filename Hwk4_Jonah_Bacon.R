@@ -57,9 +57,10 @@ hn.model <- ds(wren.df, key = "hn", adjustment = NULL, convert_units = 0.001) # 
 hr.model <- ds(wren.df, key = "hr", adjustment = NULL, convert_units = 0.001) # AIC = 1412.133
 uni.model <- ds(wren.df, key = "unif", adjustment = "cos", convert_units = 0.001) # AIC = 1416.433
 
+hn.model
 # Part 5
 
-par(mfrow=c(1,3))
+par(mfrow=c(2,3))
 plot(hn.model, nc=10)
 plot(hr.model, nc=10)
 plot(uni.model, nc=10)
@@ -284,21 +285,16 @@ years <- unique(cpue$Season)
 meat.glm_ln.preds <- predict(meat.glm, newdata=list(Season=years))
 meat.glm_preds <- exp(meat.glm_ln.preds + sd(meat.glm$residuals)^2/2)-1
 
+meat.glm_preds
+
 # Part 4
 
-cpue$fRegion <- factor(cpue$Region)
-cpue$fRegion <- relevel(cpue$fRegion, ref="Shelikof")
-
-meat.glm2 <- glm(log(CPUE.meat+1) ~ factor(Season) + fRegion, data=cpue)
+meat.glm2 <- glm(log(CPUE.meat+1) ~ factor(Season) + factor(Region), data=cpue)
 summary(meat.glm2)
-# Use Shelikof as reference region
-meat.glm2_ln.preds <- predict(meat.glm2, newdata=list(Season=years, fRegion = rep("Shelikof", length(years))))
+meat.glm2_ln.preds <- predict(meat.glm2, newdata=list(Season=years, Region = rep("Shelikof", length(years))))
 meat.glm2_preds <- exp(meat.glm2_ln.preds + sd(meat.glm2$residuals)^2/2)-1
 
-meat.glm3 <- glm(log(CPUE.meat+1) ~ factor(Season) + factor(Region), data=cpue)
-summary(meat.glm3)
-meat.glm3_ln.preds <- predict(meat.glm3, newdata=list(Season=years, Region = rep("Shelikof", length(years))))
-meat.glm3_preds <- exp(meat.glm3_ln.preds + sd(meat.glm3$residuals)^2/2)-1
+meat.glm2_preds
 
 # Part 5
 
@@ -355,6 +351,8 @@ years <- unique(cpue$Season)
 round.glm_ln.preds <- predict(round.glm, newdata=list(Season=years))
 round.glm_preds <- exp(round.glm_ln.preds + sd(round.glm$residuals)^2/2)-1
 
+round.glm_preds
+
 # Part 7
 
 round.glm2 <- glm(log(CPUE.round+1) ~ factor(Season) + factor(Region), data=cpue)
@@ -362,6 +360,8 @@ summary(round.glm2)
 # Use Shelikof as reference region
 round.glm2_ln.preds <- predict(round.glm2, newdata=list(Season=years, Region = rep("Shelikof", length(years))))
 round.glm2_preds <- exp(round.glm2_ln.preds + sd(round.glm2$residuals)^2/2)-1
+
+round.glm2_preds
 
 # Part 8
 
