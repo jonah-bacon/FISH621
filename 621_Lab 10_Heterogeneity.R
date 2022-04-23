@@ -136,13 +136,23 @@ stan.data
 # Please address the following questions:
 
 # What are the free parameters being estimated?
+# Mean_lambda = mean population growth rate, sigma_proc = SD of state process, sigma_obs = SD
+# of observation process, lambda = population growth rate at time T, N_est1 = population size
+# at T=1
+
 
 # What are the derived parameters included as part of this model?
+# N_est = population estimate at time T
 
 # What priors are placed on model parameters?
+# N_est1 ~ normal(y[1], 100);
+# mean_lambda ~ uniform(0, 10);
+# sigma_proc ~ uniform(0, 10);
+# sigma_obs ~ uniform(0, 100);
 
 # What are the names of generated quantities and what is their purpose/interpretation?
-
+# cv_obs and cv_proc; These are the coefficients of variations in our estimate of the time-
+# varying lambda and the estimate of our observations y
 
 
 # Fit Stan Model : ssm.stan ====================================================
@@ -156,7 +166,7 @@ n.samples <- (n.iter/n.thin)*0.5*n.chains
 n.samples
 
 ## Initial values
-inits <- lapply(1:nc, function(i) {
+inits <- lapply(1:n.chains, function(i) {
   list(sigma_proc = runif(1, 0, 5),
        mean_lambda = runif(1, 0.1, 2),
        sigma_obs = runif(1, 0, 10),
@@ -206,7 +216,7 @@ graph.ssm <- function(ssm, N, y) {
   
   # Define y-axis dimensions
   m1 <- min(c(y, fitted, N, lower))
-  m2 <- max(c(y, fitted, N, lower))
+  m2 <- max(c(y, fitted, N, upper))
   # Plot
   par(mar=c(4.5,4,1,1), cex=1.2)
   plot(0,0, ylim=c(m1,m2), xlim=c(0.5,n.years),
@@ -335,15 +345,28 @@ stan.data2
 # Please address the following questions:
 
 # What are the free parameters being estimated?
+#   real logN_est1; // Initial log population size
+# mean_r; // Mean growth rate
+# sigma_proc; // SD of state process
+# sigma_obs; // SD of observation process
+# r; // Growth rate in year t
 
 # What are the derived parameters included as part of this model?
+# logN_est; // Log population size in years 1990-2009
 
 # What priors are placed on model parameters?
+# logN_est1 ~ normal(5.6, 10);
+# mean_r ~ normal(1, 50);
+# sigma_proc ~ uniform(0, 1);
+# sigma_obs ~ uniform(0, 1);
 
 # What are the names of generated quantities and what is their purpose/interpretation?
+# pr; // Predicted r population growth rate for years 2010-2015
+# plogN_est; // Predicted log population size in years 2010-2015
+# N_est; // Population size from 1990-2015
 
 # In what section of the Stan script to we conduct the population projection: 2010-2015
-
+# Generated quantities section
 
 # Fit Stan Model : ssm.stan ====================================================
 
@@ -366,7 +389,7 @@ ssm2 <- stan("ssm2.stan",
 
 # Inspect Output: ssm2.stan =====================================================
 
-summary(ssm)$summary
+summary(ssm2)$summary
 # 
 
 
@@ -581,17 +604,41 @@ names(sim1)
 
 
 
-
 # SOLUTION ===================================
 
+data.fxn.Mt <- function(N=100, TT=3) {
+  y.full <- array(NA, dim=c(N,TT))
+  y.obs <- array(NA, dim=c(N,TT))
+  p <- vector(length = 3)
+  
+  for(j in 1:TT) {
+    p[j] <- runif(n = 1, min = 0, max = 1)
+    y.full[,j] <- rbinom(n=N, size=1, prob=p[j])
+  }
+  ever.detected <- apply(y.full, 1, max)
+  C <- sum(ever.detected)
+  y.obs <- y.full[ever.detected==1, ]
+  # Print results
+  print(paste(C, "out of", N, "animals present were detected with detection probabilities in time
+  points j = 1, 2, 3 of", round(p[1], 2), round(p[2], 2), round(p[3],2), "respectively"))
+  # Return simulation output
+  out <- list(N=N, p=p, C=C, TT=TT, y.full=y.full, y.obs=y.obs)
+  
+  return(out)
+}
 
+set.seed(101)
+mt.sim1 <- data.fxn.Mt(N=100, TT=3)
 
+set.seed(102)
+mt.sim2 <- data.fxn.Mt(N=100, TT=3)
 
+set.seed(103)
+mt.sim3 <- data.fxn.Mt(N=100, TT=3)
 
-
-
-
-
+set.seed(104)
+mt.sim4 <- data.fxn.Mt(N=100, TT=3)
+str(mt.sim1)
 
 # Exercise 5: M0 ===============================================================
 # In this exercise we will explore our most simplistic model for 
@@ -640,7 +687,35 @@ print(out, digits = 3)
 # PLEASE USE THE FUNCITON YOU CREATED ABOVE TO SIMULATE A NEW DATASET
 #   AND REFIT  THE M0 MODEL
 
-# 
+set.seed(101)
+data.sim <- data.fxn(N=100, p=0.35, TT=3)
+
+new.stan.data <- list(y = rbind(data.sim$y.obs, ), M = nrow(sim1$y.full), T = ncol(sim1$y.full))
+str(Mt.data)
+sim1$
+## Initial values
+inits <- function() {
+  list(p = runif(1, 0, 1), omega = 0.5)}
+
+## Parameters monitored
+params <- c("N", "p", "omega")
+
+## MCMC settings
+n.chains <- 4
+n.iter <- 4000
+n.thin <- 2
+n.samples <- (n.iter/n.thin)*0.5*n.chains
+n.samples
+
+## Call Stan from R
+out2 <- stan("M0.stan",
+            data = Mt.data, init = inits, pars = params,
+            chains = n.chains, iter = n.iter, thin = n.thin,
+            seed = 2,
+            open_progress = FALSE)
+
+## Summarize posteriors
+print(out2, digits = 3)
 
 # Exercise 6: Mt ===============================================================
 
